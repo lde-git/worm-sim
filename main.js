@@ -27,6 +27,16 @@ var targetSpeed = 0;
 var speedChangeInterval = 0;
 var food = [];
 
+
+var prevAccumleft = 0;
+var prevAccumright = 0;
+
+
+var delta_accumleft = 0;
+var delta_accumright = 0;
+
+
+
 function toggleConnectome() {
 	document.getElementById('nodeHolder').style.opacity =
 		document.getElementById('connectomeCheckbox').checked ? '1' : '0';
@@ -34,7 +44,19 @@ function toggleConnectome() {
 
 BRAIN.setup();
 
+
+let state = {
+	foodEaten: false,
+	noseHit: false,
+	foodNearby: false,
+	previousFoodNearby: false,
+};
+
+
+
+
 // Create a box for each post-synaptic neuron
+
 for (var ps in BRAIN.connectome) {
 	var nameBox = document.createElement('span');
 	//nameBox.innerHTML = ps;
@@ -54,36 +76,195 @@ for (var ps in BRAIN.connectome) {
  * calculates the new direction and speed of the worm based on the accumulated left and right inputs.
  */
 function updateBrain() {
-	BRAIN.update();
+	//BRAIN.update();
 	for (var postSynaptic in BRAIN.connectome) {
 		var psBox = document.getElementById(postSynaptic);
 		var neuron = BRAIN.postSynaptic[postSynaptic][BRAIN.thisState];
 
-		psBox.style.backgroundColor = '#55FF55';
+		
+		psBox.style.backgroundColor = '#FFFF00';
 		psBox.style.opacity = Math.min(1, neuron / 50);
 	}
 	let scalingFactor = 20;
+	
 	let newDir = (BRAIN.accumleft - BRAIN.accumright) / scalingFactor;
 	targetDir = facingDir + newDir * Math.PI;
-	//targetDir = facingDir + calculateFinalDirection(BRAIN.accumleft/200, BRAIN.accumright/200);
+	
 	targetSpeed =
 		(Math.abs(BRAIN.accumleft) + Math.abs(BRAIN.accumright)) /
 		(scalingFactor * 5);
 	speedChangeInterval = (targetSpeed - speed) / (scalingFactor * 1.5);
+
+	
+
+
+
 }
 
 BRAIN.randExcite();
-setInterval(updateBrain, 500);
+//setInterval(updateBrain, 1e3 / 60);
+setInterval(updateBrain, 400)
 
-function calculateFinalDirection(leftPercentage, rightPercentage) {
-	const maxTurnAngle = Math.PI / 2; // 90 degrees in radians
-	const leftTurnAngle = leftPercentage * maxTurnAngle;
-	const rightTurnAngle = rightPercentage * maxTurnAngle;
 
-	const finalDirection = rightTurnAngle - leftTurnAngle;
+function update() {
+	var prevAccumleft = BRAIN.accumleft;
+	var prevAccumright	= BRAIN.accumright;
+	
+	
+	BRAIN.stimulateFoodSenseNeurons = false;
+	BRAIN.stimulateNoseTouchNeurons	= false;
+	state.foodEaten = false;
 
-	return finalDirection;
+	
+
+
+	
+	speed += speedChangeInterval;
+
+	
+	var facingMinusTarget = facingDir - targetDir;
+	var angleDiff = facingMinusTarget;
+
+	// Calculate the smallest angle difference between the facing direction and the target direction
+	if (Math.abs(facingMinusTarget) > 180) {
+		if (facingDir > targetDir) {
+			angleDiff = -1 * (360 - facingDir + targetDir);
+		} else {
+			angleDiff = 360 - targetDir + facingDir;
+		}
+	}	
+
+	// Rotate the worm towards the target direction
+	if (angleDiff > 0) {
+		facingDir -= 0.1;
+	} else if (angleDiff < 0) {
+		facingDir += 0.1;
+	}
+
+	// Resolve the x and y components of the speed vector and update the worm's position
+	target.x += Math.cos(facingDir) * speed;
+	target.y -= Math.sin(facingDir) * speed;
+
+	
+	// Prevent x from going off the screen
+	if (target.x < 0) {
+		target.x = 0;
+		BRAIN.stimulateNoseTouchNeurons = true;
+	} else if (target.x > window.innerWidth) {
+		target.x = window.innerWidth;
+		BRAIN.stimulateNoseTouchNeurons = true;
+	}
+
+	// Prevent y from going off the screen
+	if (target.y < 0) {
+		target.y = 0;
+		BRAIN.stimulateNoseTouchNeurons = true;
+	} else if (target.y > window.innerHeight) {
+		target.y = window.innerHeight;
+		BRAIN.stimulateNoseTouchNeurons = true;
+	}
+
+	
+	
+	
+	// Check if the worm is near food
+	for (var i = 0; i < food.length; i++) {
+		if (
+			Math.hypot(
+				Math.round(target.x) - food[i].x,
+				Math.round(target.y) - food[i].y,
+			) <= 100
+		) {
+			// simulate food sense if food nearby
+			BRAIN.stimulateFoodSenseNeurons = true;
+
+			if (
+				Math.hypot(
+					Math.round(target.x) - food[i].x,
+					Math.round(target.y) - food[i].y,
+				) <= 20
+			) {
+				// eat food if close enough
+				food.splice(i, 1);
+				state.foodEaten = true;
+			}
+		}
+	}
+
+	// Update IK chain
+	chain.update(target);
+
+	//Update state variables
+	if (state.foodEaten) {
+		BRAIN.stimulateFoodSenseNeurons = false;
+		state.previousFoodNearby = false;
+	}
+	state.noseHit = BRAIN.stimulateNoseTouchNeurons;
+	state.previousFoodNearby = state.foodNearby;
+	state.foodNearby = BRAIN.stimulateFoodSenseNeurons;
+
+	
+	//calculate reward
+	
+	
+	BRAIN.update();
+	
+	var delta_accumleft = BRAIN.accumleft - prevAccumleft;
+	var delta_accumright = BRAIN.accumright - prevAccumright;
+	
+	let reward = rewardFunction(state, [delta_accumleft, delta_accumright]);
+	
+	let trainingData = {
+		input: [state.foodNearby, state.noseHit],
+		output: [delta_accumleft, delta_accumright]
+	};
+
+	BRAIN.train([trainingData], {
+		errorThresh: 0.005,  // Error threshold to stop training
+        iterations: 20000,   // Maximum training iterations
+        log: true,           // Log training progress to console
+        logPeriod: 10,       // Log every 10 iterations
+        learningRate: 0.3    // Learning rate
+	})
+
+	console.log("noseHit:"+state.noseHit+"\n foodNearby:"+state.foodNearby+"\n foodEaten:"+state.foodEaten+"\n previousFoodNearby:"+state.previousFoodNearby);
+	
+	
 }
+
+
+
+
+function rewardFunction(state, action) {
+    let reward = 0;
+
+    // Reward for eating food
+    if (state.foodEaten) {
+        reward += 10; // Significant positive reward
+    }
+
+    // Penalty for bumping into obstacles
+    if (state.noseHit) {
+        reward -= 2; // Moderate penalty
+    }
+
+    // Bonus for finding food (sensing food nearby)
+    if (state.foodNearby && !state.previousFoodNearby) { 
+        reward += 3; // Encourage exploration and discovery
+    }
+
+    // Penalty for leaving food area without eating
+    if (!state.foodNearby && state.previousFoodNearby && !state.foodEaten) {
+        reward -= 5; // Discourage leaving food behind
+    }
+
+    // Time penalty to encourage efficiency (optional)
+    reward -= 0.1; // Small penalty for each time step
+
+    return reward;
+}
+
+
 
 //http://jsfiddle.net/user/ARTsinn/fiddles/
 
@@ -245,83 +426,91 @@ var target = {
 
 var chain = new IKChain(200, 1);
 
+/*
+// Updated Update Function
 function update() {
-	speed += speedChangeInterval;
+    speed += speedChangeInterval;
 
-	var facingMinusTarget = facingDir - targetDir;
-	var angleDiff = facingMinusTarget;
+    // Check for key presses to update target direction
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'a') {
+            targetDir = facingDir - Math.PI / 4; // Turn left 45 degrees
+        } else if (event.key === 'd') {
+            targetDir = facingDir + Math.PI / 4; // Turn right 45 degrees
+        }
+    });
 
-	// Calculate the smallest angle difference between the facing direction and the target direction
-	if (Math.abs(facingMinusTarget) > 180) {
-		if (facingDir > targetDir) {
-			angleDiff = -1 * (360 - facingDir + targetDir);
-		} else {
-			angleDiff = 360 - targetDir + facingDir;
-		}
-	}
+    const facingMinusTarget = facingDir - targetDir;
+    let angleDiff = facingMinusTarget;
 
-	// Rotate the worm towards the target direction
-	if (angleDiff > 0) {
-		facingDir -= 0.1;
-	} else if (angleDiff < 0) {
-		facingDir += 0.1;
-	}
+    // Ensure angle difference is in the -180 to 180 degree range
+    if (Math.abs(facingMinusTarget) > Math.PI) {
+        angleDiff -= Math.sign(facingMinusTarget) * 2 * Math.PI;
+    }
 
-	// Resolve the x and y components of the speed vector and update the worm's position
-	target.x += Math.cos(facingDir) * speed;
-	target.y -= Math.sin(facingDir) * speed;
+    // Rotate the worm towards the target direction with a maximum turn speed
+    const maxTurnSpeed = 0.1; // Adjust this for faster/slower turns
+    if (angleDiff > 0) {
+        facingDir -= Math.min(angleDiff, maxTurnSpeed);
+    } else if (angleDiff < 0) {
+        facingDir += Math.min(-angleDiff, maxTurnSpeed);
+    }
 
-	// Prevent x from going off the screen
-	if (target.x < 0) {
-		target.x = 0;
-		BRAIN.stimulateNoseTouchNeurons = true;
-	} else if (target.x > window.innerWidth) {
-		target.x = window.innerWidth;
-		BRAIN.stimulateNoseTouchNeurons = true;
-	}
+    target.x += Math.cos(facingDir) * speed;
+    target.y -= Math.sin(facingDir) * speed;
 
-	// Prevent y from going off the screen
-	if (target.y < 0) {
-		target.y = 0;
-		BRAIN.stimulateNoseTouchNeurons = true;
-	} else if (target.y > window.innerHeight) {
-		target.y = window.innerHeight;
-		BRAIN.stimulateNoseTouchNeurons = true;
-	}
+    // Prevent x from going off the screen
+    if (target.x < 0) {
+        target.x = 0;
+        BRAIN.stimulateNoseTouchNeurons = true;
+    } else if (target.x > window.innerWidth) {
+        target.x = window.innerWidth;
+        BRAIN.stimulateNoseTouchNeurons = true;
+    }
 
-	// Check if the worm is near food
-	for (var i = 0; i < food.length; i++) {
-		if (
-			Math.hypot(
-				Math.round(target.x) - food[i].x,
-				Math.round(target.y) - food[i].y,
-			) <= 50
-		) {
-			// simulate food sense if food nearby
-			BRAIN.stimulateFoodSenseNeurons = true;
+    // Prevent y from going off the screen
+    if (target.y < 0) {
+        target.y = 0;
+        BRAIN.stimulateNoseTouchNeurons = true;
+    } else if (target.y > window.innerHeight) {
+        target.y = window.innerHeight;
+        BRAIN.stimulateNoseTouchNeurons = true;
+    }
 
-			if (
-				Math.hypot(
-					Math.round(target.x) - food[i].x,
-					Math.round(target.y) - food[i].y,
-				) <= 20
-			) {
-				// eat food if close enough
-				food.splice(i, 1);
-			}
-		}
-	}
+    // Check if the worm is near food
+    for (var i = 0; i < food.length; i++) {
+        if (
+            Math.hypot(
+                Math.round(target.x) - food[i].x,
+                Math.round(target.y) - food[i].y
+            ) <= 100
+        ) {
+            // simulate food sense if food nearby
+            BRAIN.stimulateFoodSenseNeurons = true;
 
-	// Reset neuron stimulation after 2 seconds
-	setTimeout(function () {
-		BRAIN.stimulateHungerNeurons = true;
-		BRAIN.stimulateNoseTouchNeurons = false;
-		BRAIN.stimulateFoodSenseNeurons = false;
-	}, 2000);
+            if (
+                Math.hypot(
+                    Math.round(target.x) - food[i].x,
+                    Math.round(target.y) - food[i].y
+                ) <= 20
+            ) {
+                // eat food if close enough
+                food.splice(i, 1);
+            }
+        }
+    }
 
-	// Update IK chain
-	chain.update(target);
+    // Reset neuron stimulation after 2 seconds
+    setTimeout(function () {
+        BRAIN.stimulateHungerNeurons = true; // Assuming the worm is always hungry
+        BRAIN.stimulateNoseTouchNeurons = false;
+        BRAIN.stimulateFoodSenseNeurons = false;
+    }, 2000);
+
+    // Update IK chain
+    chain.update(target);
 }
+*/
 
 /**
  * Draws the worm simulation on the canvas.
@@ -363,4 +552,4 @@ function draw() {
 setInterval(function () {
 	update();
 	draw();
-}, 1e3 / 60);
+}, 1e3/60);

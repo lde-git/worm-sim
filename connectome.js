@@ -6,8 +6,14 @@
 
 var BRAIN = {};
 
+//write to json for python usage
+//var weightsJSON = JSON.stringify(weights)
+//console.log(weightsJSON) 
+
+
 // Import the weights from the weights.js file so it works in the browser
 BRAIN.weights = weights;
+
 
 // A method that accepts the preSynaptic neuron and updates the postSynaptic neurons with the weighted values
 BRAIN.dendriteAccumulate = function (preSynaptic) {
@@ -262,7 +268,7 @@ BRAIN.stimulateHungerNeurons = true;
 BRAIN.stimulateNoseTouchNeurons = false;
 BRAIN.stimulateFoodSenseNeurons = false;
 
-// we want each simualtion to be slightly different
+// we want each simulation to be slightly different
 BRAIN.randExcite = function () {
 	for (var i = 0; i < 40; i++) {
 		BRAIN.dendriteAccumulate(
@@ -689,7 +695,9 @@ BRAIN.setup = function () {
 };
 
 BRAIN.update = function () {
+
 	if (BRAIN.stimulateHungerNeurons) {
+		//console.log("hungry");
 		BRAIN.dendriteAccumulate('RIML');
 		BRAIN.dendriteAccumulate('RIMR');
 		BRAIN.dendriteAccumulate('RICL');
@@ -697,6 +705,7 @@ BRAIN.update = function () {
 		BRAIN.runconnectome();
 	}
 	if (BRAIN.stimulateNoseTouchNeurons) {
+		//console.log("nose hit!")
 		BRAIN.dendriteAccumulate('FLPR');
 		BRAIN.dendriteAccumulate('FLPL');
 		BRAIN.dendriteAccumulate('ASHL');
@@ -710,6 +719,7 @@ BRAIN.update = function () {
 		BRAIN.runconnectome();
 	}
 	if (BRAIN.stimulateFoodSenseNeurons) {
+		//console.log("food nearby");
 		BRAIN.dendriteAccumulate('ADFL');
 		BRAIN.dendriteAccumulate('ADFR');
 		BRAIN.dendriteAccumulate('ASGR');

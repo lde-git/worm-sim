@@ -344,7 +344,14 @@ var weights = {
 		SMBVR: 3,
 		SMDDR: 1,
 	},
-	ALA: { ADEL: 1, AVAL: 1, AVEL: 2, AVER: 1, RID: 1, RMDR: 1 },
+	ALA: { 
+		ADEL: 1,
+		AVAL: 1, 
+		AVEL: 2, 
+		AVER: 1, 
+		RID: 1, 
+		RMDR: 1 
+	},
 	ALML: {
 		AVDR: 1,
 		AVEL: 1,
@@ -368,7 +375,11 @@ var weights = {
 		RMDDL: 1,
 		SIADL: 1,
 	},
-	ALNL: { SAAVL: 3, SMBDR: 1, SMDVL: 1 },
+	ALNL: { 
+		SAAVL: 3, 
+		SMBDR: 1, 
+		SMDVL: 1 
+	},
 	ALNR: {
 		ADER: 1,
 		RMHR: 1,
@@ -539,8 +550,20 @@ var weights = {
 		AWCL: 1,
 		AWCR: 1,
 	},
-	ASGL: { AIAL: 9, AIBL: 3, AINR: 2, AIZL: 1, ASKL: 1 },
-	ASGR: { AIAR: 10, AIBR: 2, AINL: 1, AIYR: 1, AIZR: 1 },
+	ASGL: { 
+		AIAL: 9, 
+		AIBL: 3, 
+		AINR: 2, 
+		AIZL: 1, 
+		ASKL: 1 
+	},
+	ASGR: { 
+		AIAR: 10, 
+		AIBR: 2, 
+		AINL: 1, 
+		AIYR: 1, 
+		AIZR: 1 
+	},
 	ASHL: {
 		ADAL: 2,
 		ADFL: 3,
@@ -600,8 +623,19 @@ var weights = {
 		AWCL: 1,
 		AWCR: 1,
 	},
-	ASJL: { ASJR: 1, ASKL: 4, HSNL: 1, HSNR: 1, PVQL: 14 },
-	ASJR: { ASJL: 1, ASKR: 4, HSNR: 1, PVQR: 13 },
+	ASJL: { 
+		ASJR: 1, 
+		ASKL: 4, 
+		HSNL: 1, 
+		HSNR: 1, 
+		PVQL: 14 
+	},
+	ASJR: { 
+		ASJL: 1, 
+		ASKR: 4, 
+		HSNR: 1, 
+		PVQR: 13 
+	},
 	ASKL: {
 		AIAL: 11,
 		AIBL: 2,

@@ -1,0 +1,14 @@
+{
+  "name": "worm-sim",
+  "version": "1.0.0",
+  "description": "The tiny worm C. elegans is one of the simplest multicellular organisms, and one of the only organisms in the world to have its connectome (neuron map) completed.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "brain.js": "^2.0.0-beta.24"
+  }
+}
